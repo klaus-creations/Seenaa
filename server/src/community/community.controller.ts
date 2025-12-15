@@ -11,10 +11,7 @@ import type { UserSession } from '@thallesp/nestjs-better-auth';
 export class CommunityController {
   constructor(private readonly communityService: CommunityService) {}
 
-  /**
-   * Create a new community
-   * POST /community
-   */
+  // Create a new community
   @Post()
   async create(
     @Session() session: UserSession,
@@ -23,20 +20,14 @@ export class CommunityController {
     return this.communityService.create(session.user.id, createCommunityDto);
   }
 
-  /**
-   * Discover communities (Pagination + Search)
-   * GET /community
-   */
+  // Discover communities (Pagination + Search)
   @Get()
   @OptionalAuth()
   async findAll(@Query() query: CommunityQueryDto) {
     return this.communityService.findAll(query);
   }
 
-  /**
-   * Get specific community by ID or Slug
-   * GET /community/:idOrSlug
-   */
+  // Get specific community by ID or Slug
   @Get(':id')
   @OptionalAuth()
   async findOne(
@@ -47,10 +38,7 @@ export class CommunityController {
     return this.communityService.findOne(id, userId);
   }
 
-  /**
-   * Join a community
-   * POST /community/:id/join
-   */
+  // Join a community
   @Post(':id/join')
   async join(
     @Param('id') id: string,
@@ -60,10 +48,7 @@ export class CommunityController {
     return this.communityService.join(id, session.user.id, joinDto);
   }
 
-  /**
-   * Leave a community
-   * POST /community/:id/leave
-   */
+  // Leave a community
   @Post(':id/leave')
   async leave(@Param('id') id: string, @Session() session: UserSession) {
     return this.communityService.leave(id, session.user.id);
@@ -85,19 +70,13 @@ export class CommunityController {
   }
   */
 
-  /**
-   * Get Pending Join Requests (Admin Only)
-   * GET /community/:id/requests
-   */
+  // GET Pending Request
   @Get(':id/requests')
   async getRequests(@Param('id') id: string, @Session() session: UserSession) {
     return this.communityService.getPendingRequests(id, session.user.id);
   }
 
-  /**
-   * Review a Join Request (Approve/Reject)
-   * POST /community/requests/:requestId/review
-   */
+  // Review a Join Request (Approve/Reject)
   @Post('requests/:requestId/review')
   async reviewRequest(
     @Param('requestId') requestId: string,

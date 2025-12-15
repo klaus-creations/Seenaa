@@ -359,9 +359,7 @@ export class CommunityService {
     return { message: 'User approved and added to community' };
   }
 
-  /**
-   * Get pending requests (Admin/Mod only)
-   */
+  // Get pending requests (Admin/Mod only)
   async getPendingRequests(communityId: string, userId: string) {
     await this.verifyPermission(communityId, userId, [
       'creator',
