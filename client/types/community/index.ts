@@ -1,11 +1,26 @@
-export type CommunityRole = "creator" | "admin" | "moderator" | "member";
+import { User } from "../user";
+
+export type CommunityRole = "creator" | "admin" | "member";
 export type MemberStatus = "active" | "pending" | "banned" | "left";
 export type RequestStatus = "pending" | "approved" | "rejected";
+
+/**
+ * Granular permissions for Admin roles
+ * Matches the 'PermissionAction' type in your NestJS service
+ */
+export interface AdminPermissions {
+  canManageInfo: boolean;
+  canManageMembers: boolean;
+  canManageRoles: boolean;
+  canVerifyPosts: boolean;
+  canDeletePosts: boolean;
+}
 
 export interface CurrentUserContext {
   isMember: boolean;
   role: CommunityRole | null;
   status: MemberStatus | null;
+  permissions: Partial<AdminPermissions> | null;
   hasPendingRequest: boolean;
 }
 
@@ -19,6 +34,7 @@ export interface Community {
   banner: string | null;
   isPrivate: boolean;
   requireApproval: boolean;
+  requirePostApproval: boolean; // Added from service logic
   memberCount: number;
   postCount: number;
   createdAt: string;
@@ -27,7 +43,27 @@ export interface Community {
   currentUser?: CurrentUserContext;
 }
 
-// DTO for creating
+/**
+ * Represents a member record when listing community members
+ */
+export interface CommunityMember {
+  id: string;
+  communityId: string;
+  userId: string;
+  role: CommunityRole;
+  status: MemberStatus;
+  permissions: Partial<AdminPermissions> | Record<string, any>;
+  joinedAt: string;
+  leftAt: string | null;
+  bannedAt: string | null;
+  banReason: string | null;
+  user: User
+}
+
+// ==========================
+// DTOs (Data Transfer Objects)
+// ==========================
+
 export interface CreateCommunityDto {
   name: string;
   slug: string;
@@ -36,31 +72,69 @@ export interface CreateCommunityDto {
   requireApproval?: boolean;
 }
 
-// DTO for joining
-export interface JoinCommunityDto {
-  message?: string;
-}
-
-// DTO for listing
 export interface CommunityQueryDto {
   limit?: number;
   offset?: number;
   search?: string;
 }
 
-// Join Request Object (for Admin Dashboard)
+export interface JoinCommunityDto {
+  message?: string;
+}
+
+export interface ReviewRequestDto {
+  status: RequestStatus;
+}
+
+export interface UpdateMemberRoleDto {
+  role: "admin" | "member";
+  permissions: Partial<AdminPermissions>;
+}
+
+export interface BanMemberDto {
+  reason: string;
+}
+
+export interface UpdateSettingsDto {
+  name?: string;
+  description?: string;
+  avatar?: string;
+  banner?: string;
+  isPrivate?: boolean;
+  requireApproval?: boolean;
+  requirePostApproval?: boolean;
+}
+
+export interface CreateReportDto {
+  targetType: "post" | "comment" | "member";
+  targetId: string;
+  reason: string;
+}
+
+// ==========================
+// OBJECTS
+// ==========================
+
 export interface CommunityJoinRequest {
   id: string;
   communityId: string;
   userId: string;
   message: string | null;
   status: RequestStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
   createdAt: string;
-  // If you expand the backend to include user details, add them here
-  // user?: { id: string; name: string; avatar: string };
+  // Included if using relations
+  user: User
 }
 
-// DTO for Reviewing
-export interface ReviewRequestDto {
-  status: "approved" | "rejected";
+export interface CommunityReport {
+  id: string;
+  communityId: string;
+  reporterId: string;
+  targetType: "post" | "comment" | "member";
+  targetId: string;
+  reason: string;
+  status: "pending" | "resolved" | "dismissed";
+  createdAt: string;
 }

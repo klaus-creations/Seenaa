@@ -10,7 +10,7 @@ export interface User {
   name: string;
   username: string;
   displayUsername?: string;
-  email?: string; // Only present in 'me'
+  email?: string;
   image?: string;
   bio?: string;
   country?: string;
@@ -29,7 +29,7 @@ export interface User {
   profileTheme: ProfileTheme;
   isVerified: boolean;
   isOnline: boolean;
-  lastActiveAt?: string; // ISO Date string
+  lastActiveAt?: string;
   createdAt: string;
 }
 
