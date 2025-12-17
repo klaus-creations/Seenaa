@@ -8,6 +8,20 @@
       "when": 1765368351801,
       "tag": "0000_sweet_johnny_blaze",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1765813434298,
+      "tag": "0001_wise_the_leader",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765814300497,
+      "tag": "0002_panoramic_master_mold",
+      "breakpoints": true
     }
   ]
 }

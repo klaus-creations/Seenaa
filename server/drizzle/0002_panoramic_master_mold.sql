@@ -1,0 +1,1 @@
+ALTER TABLE "community_member" ADD COLUMN "left_at" timestamp;
