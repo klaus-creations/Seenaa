@@ -6,38 +6,61 @@ import {
   ConflictException,
   Inject,
 } from '@nestjs/common';
-import { eq, and, desc, sql, or, ilike, InferSelectModel } from 'drizzle-orm';
+import {
+  eq,
+  and,
+  desc,
+  sql,
+  or,
+  ilike,
+  InferSelectModel,
+  SQL,
+} from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { schema } from '../database/schema'; // Adjust path
+import { schema } from '../database/schema'; // Ensure this points to your schema file
 import { v4 as uuidv4 } from 'uuid';
+
+// Imports for DTOs and Types
 import { CreateCommunityDto } from './dto/create-community.dto';
 import { CommunityQueryDto } from './dto/community-query.dto';
 import { JoinCommunityDto } from './dto/join-community.dto';
 import { ReviewRequestDto } from './dto/review-request.dto';
+import { UpdateMemberRoleDto } from './dto/manage-member.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { CreateReportDto } from './dto/report.dto';
+import { AdminPermissions } from './schema';
+
+// Permission Keys Helper
+type PermissionAction =
+  | 'canManageInfo'
+  | 'canManageMembers'
+  | 'canManageRoles'
+  | 'canVerifyPosts'
+  | 'canDeletePosts';
 
 @Injectable()
 export class CommunityService {
   constructor(@Inject('DB') private db: NodePgDatabase<typeof schema>) {}
 
   /**
-   * Create a new community
-   * Wraps creation + member insertion in a transaction
+   * ==========================================================
+   * 1. CREATE & DISCOVER
+   * ==========================================================
    */
+
   async create(userId: string, dto: CreateCommunityDto) {
-    // 1. Check Slug Uniqueness
     const existing = await this.db.query.community.findFirst({
       where: eq(schema.community.slug, dto.slug),
     });
 
     if (existing) {
-      throw new ConflictException('Community URL (slug) is already taken.');
+      throw new ConflictException('This Community Handle already exists');
     }
 
     const communityId = uuidv4();
 
-    // 2. Transaction: Create Community -> Add Creator -> Increment Count
     return await this.db.transaction(async (tx) => {
-      // A. Insert Community
+      // Create Community
       const [newCommunity] = await tx
         .insert(schema.community)
         .values({
@@ -48,26 +71,25 @@ export class CommunityService {
           description: dto.description,
           isPrivate: dto.isPrivate ?? false,
           requireApproval: dto.requireApproval ?? false,
-          memberCount: 1, // Start with 1 (the creator)
+          requirePostApproval: false, // Default
+          memberCount: 1,
         })
         .returning();
 
-      // B. Insert Creator as Admin/Owner
+      // Create Creator (Admin/Owner)
       await tx.insert(schema.communityMember).values({
         id: uuidv4(),
         communityId: communityId,
         userId: userId,
         role: 'creator',
         status: 'active',
+        permissions: {},
       });
 
       return newCommunity;
     });
   }
 
-  /**
-   * Get all communities (Discovery)
-   */
   async findAll(query: CommunityQueryDto) {
     const { limit = 20, offset = 0, search } = query;
 
@@ -78,7 +100,7 @@ export class CommunityService {
         )
       : undefined;
 
-    const communities = await this.db.query.community.findMany({
+    return await this.db.query.community.findMany({
       where: whereClause,
       limit,
       offset,
@@ -93,20 +115,9 @@ export class CommunityService {
         isPrivate: true,
       },
     });
-
-    return communities;
   }
 
-  /**
-   * Get one community by Slug or ID
-   * Includes the current user's membership status
-   */
-  /**
-   * Get one community by Slug or ID
-   * Includes the current user's membership status
-   */
   async findOne(identifier: string, userId: string | null) {
-    // identifier can be slug or UUID. Check slug first (common case)
     let community = await this.db.query.community.findFirst({
       where: eq(schema.community.slug, identifier),
     });
@@ -119,7 +130,6 @@ export class CommunityService {
 
     if (!community) throw new NotFoundException('Community not found');
 
-    // FIX: Explicitly type these variables to match Drizzle's return type
     let membership: InferSelectModel<typeof schema.communityMember> | undefined;
     let pendingRequest:
       | InferSelectModel<typeof schema.communityJoinRequest>
@@ -150,23 +160,24 @@ export class CommunityService {
         isMember: membership?.status === 'active',
         role: membership?.role || null,
         status: membership?.status || null,
+        permissions: membership?.permissions || null,
         hasPendingRequest: !!pendingRequest,
       },
     };
   }
 
   /**
-   * Join a community
-   * Handles: Public Join, Private Join (Error), Join Requests, Re-joining
+   * ==========================================================
+   * 2. JOIN / LEAVE
+   * ==========================================================
    */
+
   async join(communityId: string, userId: string, dto: JoinCommunityDto) {
     const community = await this.db.query.community.findFirst({
       where: eq(schema.community.id, communityId),
     });
-
     if (!community) throw new NotFoundException('Community not found');
 
-    // 1. Check existing membership
     const existingMember = await this.db.query.communityMember.findFirst({
       where: and(
         eq(schema.communityMember.communityId, communityId),
@@ -175,30 +186,15 @@ export class CommunityService {
     });
 
     if (existingMember) {
-      if (existingMember.status === 'active') {
-        throw new ConflictException('You are already a member.');
-      }
-      if (existingMember.status === 'banned') {
-        throw new ForbiddenException('You are banned from this community.');
-      }
-      if (existingMember.status === 'pending') {
-        throw new ConflictException(
-          'You already have a pending invitation/status.',
-        );
-      }
-      // If status is 'left', we allow re-joining below
+      if (existingMember.status === 'active')
+        throw new ConflictException('Already a member.');
+      if (existingMember.status === 'banned')
+        throw new ForbiddenException('You are banned.');
+      // If 'left', allow rejoin below
     }
 
-    // 2. Handle Logic based on Privacy/Approval
-    // if (community.isPrivate && !existingMember) {
-    //   // Private communities require an Invitation (handled in a separate service/method usually)
-    //   throw new ForbiddenException(
-    //     'This is a private community. You must be invited.',
-    //   );
-    // }
-
+    // Approval Flow
     if (community.requireApproval) {
-      // Check if request already exists
       const existingReq = await this.db.query.communityJoinRequest.findFirst({
         where: and(
           eq(schema.communityJoinRequest.communityId, communityId),
@@ -206,10 +202,8 @@ export class CommunityService {
           eq(schema.communityJoinRequest.status, 'pending'),
         ),
       });
-      if (existingReq)
-        throw new ConflictException('Join request already pending.');
+      if (existingReq) throw new ConflictException('Join request pending.');
 
-      // Create Request
       await this.db.insert(schema.communityJoinRequest).values({
         id: uuidv4(),
         communityId,
@@ -217,21 +211,16 @@ export class CommunityService {
         message: dto.message,
         status: 'pending',
       });
-      return {
-        status: 'request_sent',
-        message: 'Your request to join has been sent.',
-      };
+      return { status: 'request_sent', message: 'Request sent.' };
     }
 
-    // 3. Direct Join (Public + No Approval) OR Re-join ('left')
+    // Direct Join or Re-Join
     if (existingMember && existingMember.status === 'left') {
-      // Re-activate member
       await this.db
         .update(schema.communityMember)
         .set({ status: 'active', joinedAt: new Date(), leftAt: null })
         .where(eq(schema.communityMember.id, existingMember.id));
     } else {
-      // New member
       await this.db.insert(schema.communityMember).values({
         id: uuidv4(),
         communityId,
@@ -241,18 +230,14 @@ export class CommunityService {
       });
     }
 
-    // Atomically increment member count
     await this.db
       .update(schema.community)
       .set({ memberCount: sql`${schema.community.memberCount} + 1` })
       .where(eq(schema.community.id, communityId));
 
-    return { status: 'joined', message: 'Successfully joined the community.' };
+    return { status: 'joined', message: 'Welcome to the community!' };
   }
 
-  /**
-   * Leave a community
-   */
   async leave(communityId: string, userId: string) {
     const member = await this.db.query.communityMember.findFirst({
       where: and(
@@ -262,30 +247,44 @@ export class CommunityService {
       ),
     });
 
-    if (!member) throw new BadRequestException('You are not an active member.');
+    if (!member) throw new BadRequestException('Not an active member.');
     if (member.role === 'creator')
-      throw new ForbiddenException(
-        'The creator cannot leave the community. Transfer ownership first.',
-      );
+      throw new ForbiddenException('Creator cannot leave.');
 
-    // Soft delete (change status)
     await this.db
       .update(schema.communityMember)
       .set({ status: 'left', leftAt: new Date() })
       .where(eq(schema.communityMember.id, member.id));
 
-    // Decrement count
     await this.db
       .update(schema.community)
       .set({ memberCount: sql`${schema.community.memberCount} - 1` })
       .where(eq(schema.community.id, communityId));
 
-    return { message: 'You have left the community.' };
+    return { message: 'You left the community.' };
   }
 
   /**
-   * Review Join Request (Admin/Mod only)
+   * ==========================================================
+   * 3. JOIN REQUEST REVIEW (Permissions: Members Management)
+   * ==========================================================
    */
+
+  async getPendingRequests(communityId: string, userId: string) {
+    await this.checkPermission(communityId, userId, 'canManageMembers');
+
+    return await this.db.query.communityJoinRequest.findMany({
+      where: and(
+        eq(schema.communityJoinRequest.communityId, communityId),
+        eq(schema.communityJoinRequest.status, 'pending'),
+      ),
+      orderBy: [desc(schema.communityJoinRequest.createdAt)],
+      with: {
+          user: true,
+      }
+    });
+  }
+
   async reviewJoinRequest(
     adminId: string,
     requestId: string,
@@ -294,39 +293,39 @@ export class CommunityService {
     const request = await this.db.query.communityJoinRequest.findFirst({
       where: eq(schema.communityJoinRequest.id, requestId),
     });
-
     if (!request) throw new NotFoundException('Request not found');
     if (request.status !== 'pending')
-      throw new BadRequestException('Request already processed');
+      throw new BadRequestException('Already processed');
 
-    // Verify Admin Permissions
-    await this.verifyPermission(request.communityId, adminId, [
-      'creator',
-      'admin',
-      'moderator',
-    ]);
-
-    const now = new Date();
+    await this.checkPermission(
+      request.communityId,
+      adminId,
+      'canManageMembers',
+    );
 
     if (dto.status === 'rejected') {
       await this.db
         .update(schema.communityJoinRequest)
-        .set({ status: 'rejected', reviewedBy: adminId, reviewedAt: now })
+        .set({
+          status: 'rejected',
+          reviewedBy: adminId,
+          reviewedAt: new Date(),
+        })
         .where(eq(schema.communityJoinRequest.id, requestId));
       return { message: 'Request rejected' };
     }
 
-    // If Approved: Transaction needed to update request AND add member
+    // Approve
     await this.db.transaction(async (tx) => {
-      // 1. Update Request
       await tx
         .update(schema.communityJoinRequest)
-        .set({ status: 'approved', reviewedBy: adminId, reviewedAt: now })
+        .set({
+          status: 'approved',
+          reviewedBy: adminId,
+          reviewedAt: new Date(),
+        })
         .where(eq(schema.communityJoinRequest.id, requestId));
 
-      // 2. Add Member (Check for 'left' status upsert logic if needed, but usually new row for requests)
-      // We assume clean slate or unique index handles conflicts.
-      // Better to check existence inside tx for robustness.
       const existing = await tx.query.communityMember.findFirst({
         where: and(
           eq(schema.communityMember.communityId, request.communityId),
@@ -337,7 +336,7 @@ export class CommunityService {
       if (existing) {
         await tx
           .update(schema.communityMember)
-          .set({ status: 'active', joinedAt: now })
+          .set({ status: 'active', joinedAt: new Date() })
           .where(eq(schema.communityMember.id, existing.id));
       } else {
         await tx.insert(schema.communityMember).values({
@@ -349,48 +348,190 @@ export class CommunityService {
         });
       }
 
-      // 3. Increment Count
       await tx
         .update(schema.community)
         .set({ memberCount: sql`${schema.community.memberCount} + 1` })
         .where(eq(schema.community.id, request.communityId));
     });
 
-    return { message: 'User approved and added to community' };
+    return { message: 'User approved' };
   }
 
-  // Get pending requests (Admin/Mod only)
-  async getPendingRequests(communityId: string, userId: string) {
-    await this.verifyPermission(communityId, userId, [
-      'creator',
-      'admin',
-      'moderator',
-    ]);
 
-    return await this.db.query.communityJoinRequest.findMany({
-      where: and(
-        eq(schema.communityJoinRequest.communityId, communityId),
-        eq(schema.communityJoinRequest.status, 'pending'),
-      ),
-      orderBy: [desc(schema.communityJoinRequest.createdAt)],
+  // Filter Members: 'all', 'banned', 'admin'
+  async getMembers(
+    communityId: string,
+    userId: string,
+    filter: 'all' | 'banned' | 'admin' | 'pending',
+  ) {
+    if (filter === 'banned' || filter === 'pending') {
+      await this.checkPermission(communityId, userId, 'canManageMembers');
+    }
+
+    // FIX: Use an array of conditions for clean Drizzle usage
+    const conditions: SQL[] = [
+      eq(schema.communityMember.communityId, communityId),
+    ];
+
+    if (filter === 'banned') {
+      conditions.push(eq(schema.communityMember.status, 'banned'));
+    } else if (filter === 'admin') {
+      conditions.push(eq(schema.communityMember.role, 'admin'));
+    } else if (filter === 'all') {
+      conditions.push(eq(schema.communityMember.status, 'active'));
+    }
+
+    // Pass the spread array to 'and()'
+    return await this.db.query.communityMember.findMany({
+      where: and(...conditions),
+      limit: 50,
+      orderBy: [desc(schema.communityMember.joinedAt)],
       with: {
-        // Assuming you have a relation defined in schema, otherwise fetch user details separately
-        // For now returning raw IDs, in real app you join with User table
-      },
+          user: true,
+      }
     });
   }
 
-  // ==============================
-  // HELPERS
-  // ==============================
+  // Promote/Demote & Assign Granular Permissions
+  async updateMemberRole(
+    actorId: string,
+    communityId: string,
+    targetUserId: string,
+    dto: UpdateMemberRoleDto,
+  ) {
+    await this.checkPermission(communityId, actorId, 'canManageRoles');
 
-  /**
-   * Helper to verify if user has specific roles in a community
-   */
-  private async verifyPermission(
+    const target = await this.db.query.communityMember.findFirst({
+      where: and(
+        eq(schema.communityMember.communityId, communityId),
+        eq(schema.communityMember.userId, targetUserId),
+      ),
+    });
+
+    if (!target) throw new NotFoundException('Member not found');
+    if (target.role === 'creator')
+      throw new ForbiddenException('Cannot change Creator role.');
+    if (target.userId === actorId)
+      throw new BadRequestException('Cannot change your own role.');
+
+    await this.db
+      .update(schema.communityMember)
+      .set({
+        role: dto.role,
+        permissions: dto.role === 'admin' ? dto.permissions : {},
+      })
+      .where(eq(schema.communityMember.id, target.id));
+
+    return { message: `User updated to ${dto.role}` };
+  }
+
+  // Ban Logic
+  async banMember(
+    actorId: string,
+    communityId: string,
+    targetUserId: string,
+    reason: string,
+  ) {
+    await this.checkPermission(communityId, actorId, 'canManageMembers');
+
+    const target = await this.db.query.communityMember.findFirst({
+      where: and(
+        eq(schema.communityMember.communityId, communityId),
+        eq(schema.communityMember.userId, targetUserId),
+      ),
+    });
+
+    if (!target) throw new NotFoundException('Member not found');
+    if (target.role === 'creator')
+      throw new ForbiddenException('Cannot ban the Creator.');
+
+    await this.db
+      .update(schema.communityMember)
+      .set({
+        status: 'banned',
+        bannedAt: new Date(),
+        bannedBy: actorId,
+        banReason: reason,
+        permissions: {}, // Revoke permissions
+      })
+      .where(eq(schema.communityMember.id, target.id));
+
+    // Decrement count
+    await this.db
+      .update(schema.community)
+      .set({ memberCount: sql`${schema.community.memberCount} - 1` })
+      .where(eq(schema.community.id, communityId));
+
+    return { message: 'User has been banned.' };
+  }
+
+  // 5. SETTINGS & REPORTING
+  async updateSettings(
+    actorId: string,
+    communityId: string,
+    dto: UpdateSettingsDto,
+  ) {
+    await this.checkPermission(communityId, actorId, 'canManageInfo');
+
+    await this.db
+      .update(schema.community)
+      .set({
+        ...dto,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.community.id, communityId));
+
+    return { message: 'Settings updated' };
+  }
+
+  async createReport(
+    reporterId: string,
+    communityId: string,
+    dto: CreateReportDto,
+  ) {
+    await this.db.insert(schema.communityReport).values({
+      id: uuidv4(),
+      communityId,
+      reporterId,
+      targetType: dto.targetType,
+      targetId: dto.targetId,
+      reason: dto.reason,
+      status: 'pending',
+    });
+    return { message: 'Report submitted.' };
+  }
+
+  // Helper used by PostService to check if content needs approval
+  async shouldPostBePending(
     communityId: string,
     userId: string,
-    allowedRoles: string[],
+  ): Promise<boolean> {
+    const community = await this.db.query.community.findFirst({
+      where: eq(schema.community.id, communityId),
+      columns: { requirePostApproval: true },
+    });
+
+    if (!community?.requirePostApproval) return false;
+
+    const member = await this.db.query.communityMember.findFirst({
+      where: and(
+        eq(schema.communityMember.communityId, communityId),
+        eq(schema.communityMember.userId, userId),
+      ),
+    });
+
+    // Admins and Creator bypass approval
+    if (member?.role === 'creator' || member?.role === 'admin') return false;
+
+    return true;
+  }
+
+  // PRIVATE HELPERS
+
+  private async checkPermission(
+    communityId: string,
+    userId: string,
+    action: PermissionAction,
   ) {
     const member = await this.db.query.communityMember.findFirst({
       where: and(
@@ -400,11 +541,22 @@ export class CommunityService {
       ),
     });
 
-    if (!member || !allowedRoles.includes(member.role)) {
-      throw new ForbiddenException(
-        'You do not have permission to perform this action.',
-      );
+    if (!member)
+      throw new ForbiddenException('You are not a member of this community.');
+
+    // 1. Creator has God Mode
+    if (member.role === 'creator') return true;
+
+    // 2. Members have no power
+    if (member.role === 'member')
+      throw new ForbiddenException('Insufficient permissions.');
+
+    // 3. Admins check their JSON permissions
+    const perms = member.permissions as AdminPermissions;
+    if (member.role === 'admin' && perms && perms[action]) {
+      return true;
     }
-    return member;
+
+    throw new ForbiddenException(`You lack the ${action} permission.`);
   }
 }
