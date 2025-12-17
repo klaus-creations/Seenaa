@@ -40,7 +40,7 @@ export default function CommunityMain({ community }: { community: Community }) {
 
   return (
     <div className="size-full">
-      <div className="w-full mx-auto px-4 relative">
+      <div className="w-full mx-auto relative">
         <Card className="border">
           <CardContent className="">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -59,7 +59,7 @@ export default function CommunityMain({ community }: { community: Community }) {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="feed" className="space-y-6 mt-0">
+              <TabsContent value="feed" className="space-y-6 mt-0 w-full lg:w-[65%] 2xl:w-[40%]">
                 {postsData?.posts.map((post) => (
                   <SinglePost postData={post} key={post.id} />
                 ))}

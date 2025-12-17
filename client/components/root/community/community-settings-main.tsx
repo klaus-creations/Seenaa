@@ -29,20 +29,26 @@ import MembersRolesAdminsModeratorsSettings from "./settings/members-roles/admin
 import ContentModerationsPostApprovalSettings from "./settings/content-moderations/post-approval";
 import ContentModerationsReportedPostsSettings from "./settings/content-moderations/reported-posts";
 
-export default function CommunitySettingsMain({id}: { id: string}) {
+import { Community as CommunityInterface } from "@/types/community";
+
+interface CommunitySettingsProps {
+    comm: CommunityInterface
+}
+
+export default function CommunitySettingsMain({ comm } : CommunitySettingsProps) {
   const { activeSection, activeItem } = useCommunitySettings();
 
   const renderSettingsContent = () => {
     if (activeSection === "General Settings") {
       switch (activeItem) {
         case "Community Info":
-          return <GeneralCommunityInfoSettings />;
+          return <GeneralCommunityInfoSettings community={comm}/>;
         case "Welcome Message":
-          return <GeneralWelcomeMessageSettings />;
+          return <GeneralWelcomeMessageSettings community={comm}/>;
         case "Community Rules":
-          return <GeneralCommunityRulesSettings />;
+          return <GeneralCommunityRulesSettings community={comm}/>;
         case "Privacy & Visibility":
-          return <GeneralPrivacyPolicySettings />;
+          return <GeneralPrivacyPolicySettings community={comm} />;
         default:
           return null;
       }
@@ -51,13 +57,13 @@ export default function CommunitySettingsMain({id}: { id: string}) {
     if (activeSection === "Members & Roles") {
       switch (activeItem) {
         case "All Members":
-          return <MembersRolesAllMembersSettings />;
+          return <MembersRolesAllMembersSettings community={comm}/>;
         case "Pending Requests":
-          return <MembersRolesPendingRequestSettings communityId={id}/>;
+          return <MembersRolesPendingRequestSettings community={comm}/>;
         case "Banned Members":
-          return <MembersRolesBannedMembersSettings />;
+          return <MembersRolesBannedMembersSettings community={comm}/>;
         case "Moderators & Admins":
-          return <MembersRolesAdminsModeratorsSettings />;
+          return <MembersRolesAdminsModeratorsSettings community={comm}/>;
         default:
           return null;
       }
@@ -66,9 +72,9 @@ export default function CommunitySettingsMain({id}: { id: string}) {
     if (activeSection === "Content & Moderation") {
       switch (activeItem) {
         case "Post Approval":
-          return <ContentModerationsPostApprovalSettings />;
+          return <ContentModerationsPostApprovalSettings community={comm}/>;
         case "Reported Posts":
-          return <ContentModerationsReportedPostsSettings />;
+          return <ContentModerationsReportedPostsSettings community={comm}/>;
         default:
           return null;
       }
