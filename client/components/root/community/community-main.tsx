@@ -41,36 +41,37 @@ export default function CommunityMain({ community }: { community: Community }) {
   return (
     <div className="size-full">
       <div className="w-full mx-auto relative">
-        <Card className="border">
-          <CardContent className="">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full sm:w-auto grid-cols-3">
-                <TabsTrigger value="feed" className="gap-2">
-                  <Grid3X3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Feed</span>
-                </TabsTrigger>
-                <TabsTrigger value="posts" className="gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="hidden sm:inline">About</span>
-                </TabsTrigger>
-                <TabsTrigger value="members" className="gap-2">
-                  <Users className="h-4 w-4" />
-                  <span className="hidden sm:inline">Members</span>
-                </TabsTrigger>
-              </TabsList>
+        <div className="border">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full sm:w-auto grid-cols-3">
+              <TabsTrigger value="feed" className="gap-2">
+                <Grid3X3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Feed</span>
+              </TabsTrigger>
+              <TabsTrigger value="posts" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">About</span>
+              </TabsTrigger>
+              <TabsTrigger value="members" className="gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Members</span>
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="feed" className="space-y-6 mt-0 w-full lg:w-[65%] 2xl:w-[40%]">
-                {postsData?.posts.map((post) => (
-                  <SinglePost postData={post} key={post.id} />
-                ))}
-              </TabsContent>
+            <TabsContent
+              value="feed"
+              className="space-y-6 mt-0 w-full lg:w-[65%] 2xl:w-[40%]"
+            >
+              {postsData?.posts.map((post) => (
+                <SinglePost postData={post} key={post.id} />
+              ))}
+            </TabsContent>
 
-              <TabsContent value="members" className="mt-0">
-                Show Members Here
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+            <TabsContent value="members" className="mt-0">
+              Show Members Here
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
