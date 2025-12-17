@@ -1,4 +1,5 @@
 "use client";
+
 import { PostResponseDto } from "@/types/posts";
 import { MessageCircle, Repeat2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -6,6 +7,13 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import PostReactionActions from "../common/post-reactions";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface SinglePostProps {
   postData: PostResponseDto;
@@ -13,7 +21,6 @@ interface SinglePostProps {
 
 export default function SinglePost({ postData }: SinglePostProps) {
   const router = useRouter();
-  console.log("these are the home post datas ", postData);
 
   const formattedTime = formatDistanceToNow(new Date(postData.createdAt), {
     addSuffix: true,
@@ -21,9 +28,7 @@ export default function SinglePost({ postData }: SinglePostProps) {
 
   const fullText = postData.content;
   const isLarge = fullText.length > 200;
-
   const truncateLength = Math.ceil(fullText.length * 0.2);
-
   const contentToDisplay = isLarge
     ? fullText.slice(0, truncateLength) + "..."
     : fullText;
@@ -33,10 +38,14 @@ export default function SinglePost({ postData }: SinglePostProps) {
     router.push(`/home/peoples/${postData.author.username}`);
   };
 
+  const handlePostClick = () => {
+    router.push(`/home/posts/${postData.id}`);
+  };
+
   return (
     <article
-      className="p-4 border-b duration-200 cursor-pointer w-full hover:bg-primary/5"
-      onClick={() => router.push(`/home/posts/${postData.id}`)}
+      className="p-4 border-b duration-200 cursor-pointer w-full hover:bg-primary/3 dark:hover:bg-primary/1"
+      onClick={handlePostClick}
     >
       <div className="flex gap-3">
         {/* Avatar */}
@@ -90,16 +99,16 @@ export default function SinglePost({ postData }: SinglePostProps) {
             </div>
           </div>
 
-          {/* Post Content */}
+          {/* Post Content Text */}
           <div className="mb-3">
             <p className="whitespace-pre-wrap wrap-break-word text-foreground-secondary inline">
               {contentToDisplay}
             </p>
 
-            {isLarge && <span className="text-secondary">See more</span>}
+            {isLarge && <span className="text-secondary ml-1 hover:underline">See more</span>}
 
             {/* Hashtags & Mentions */}
-            {postData.hashtags?.length || postData.mentions?.length ? (
+            {(postData.hashtags?.length > 0 || postData.mentions?.length > 0) && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {postData.hashtags?.map((tag) => (
                   <span
@@ -107,7 +116,6 @@ export default function SinglePost({ postData }: SinglePostProps) {
                     className="text-blue-400 hover:underline cursor-pointer text-sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Add hashtag routing logic here later
                     }}
                   >
                     #{tag}
@@ -119,61 +127,83 @@ export default function SinglePost({ postData }: SinglePostProps) {
                     className="text-blue-400 hover:underline cursor-pointer text-sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Add mention routing logic here later
                     }}
                   >
                     @{mention}
                   </span>
                 ))}
               </div>
-            ) : null}
+            )}
           </div>
 
-          {/* Images */}
+          {/* CAROUSEL IMPLEMENTATION */}
           {postData.images && postData.images.length > 0 && (
-            <div
-              className={cn(
-                "mb-3 rounded-xl overflow-hidden border border-gray-800",
-                postData.images.length > 1 ? "grid grid-cols-2 gap-0.5" : ""
-              )}
-            >
-              {postData.images.slice(0, 4).map((image, index) => (
-                <div key={index} className="relative aspect-video bg-gray-900">
-                  <Image
-                    src={image}
-                    alt={`Post image ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                  {postData.images &&
-                    index === 3 &&
-                    postData.images.length > 4 && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <span className="font-semibold">
-                          +{postData.images.length - 4}
-                        </span>
+            <div className="mb-3 rounded-xl overflow-hidden border border-border bg-black/5 dark:bg-black/40">
+              <Carousel
+                className="w-full"
+                opts={{
+                  align: "start",
+                  loop: true,
+                }}
+              >
+                <CarouselContent>
+                  {postData.images.map((image, index) => (
+                    <CarouselItem key={index}>
+                      {/*
+                         We use a fixed height container here.
+                         h-[300px] on mobile, h-[400px] on larger screens.
+                         object-cover ensures it fills the box beautifully.
+                      */}
+                      <div className="relative w-full h-[300px] sm:h-[400px]">
+                        <Image
+                          src={image}
+                          alt={`Post content ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 75vw, 50vw"
+                          priority={index === 0} // Load first image faster
+                        />
                       </div>
-                    )}
-                </div>
-              ))}
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+
+                {/* Only show navigation arrows if there is more than 1 image */}
+                {postData.images.length > 1 && (
+                  <>
+                    <CarouselPrevious
+                      className="left-2 bg-black/50 border-none text-white hover:bg-black/70 hover:text-white h-8 w-8"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <CarouselNext
+                      className="right-2 bg-black/50 border-none text-white hover:bg-black/70 hover:text-white h-8 w-8"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+
+                    {/* Optional: Image Counter Bubble (e.g., 1/3) */}
+                    <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full font-medium pointer-events-none">
+                      {postData.images.length} photos
+                    </div>
+                  </>
+                )}
+              </Carousel>
             </div>
           )}
 
-          <div className="flex items-center gap-4 text-sm mb-3">
+          <div className="flex items-center gap-4 text-sm mb-3 text-muted-foreground">
             {postData.viewCount > 0 && (
               <div className="flex items-center gap-1">
-                <span>{postData.viewCount.toLocaleString()}</span>
+                <span className="font-medium text-foreground">{postData.viewCount.toLocaleString()}</span>
                 <span>Views</span>
               </div>
             )}
             <div className="flex items-center gap-1">
-              <MessageCircle size={14} />
-              <span>{postData.commentCount.toLocaleString()}</span>
+              <MessageCircle size={16} />
+              <span className="font-medium text-foreground">{postData.commentCount.toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Repeat2 size={14} />
-              <span>{postData.shareCount.toLocaleString()}</span>
+              <Repeat2 size={16} />
+              <span className="font-medium text-foreground">{postData.shareCount.toLocaleString()}</span>
             </div>
           </div>
 
