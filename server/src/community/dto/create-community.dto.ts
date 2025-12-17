@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, Matches, MinLength, MaxLength } from 'class-validator';
 
 export class CreateCommunityDto {
   @IsString()
@@ -27,7 +27,3 @@ export class CreateCommunityDto {
   @IsOptional()
   requireApproval?: boolean;
 }
-
-
-
-

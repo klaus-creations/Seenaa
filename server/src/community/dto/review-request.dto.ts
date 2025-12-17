@@ -1,8 +1,7 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty } from 'class-validator';
 
 export class ReviewRequestDto {
-  @IsString()
+  @IsEnum(['approved', 'rejected'])
   @IsNotEmpty()
-  @IsIn(['approved', 'rejected'])
   status: 'approved' | 'rejected';
 }
