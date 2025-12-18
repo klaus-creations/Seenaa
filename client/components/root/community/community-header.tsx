@@ -17,7 +17,7 @@ export const CommunityHeader = ({ community }: CommunityHeaderProps) => {
   const hasBanner = Boolean(community.banner);
 
   return (
-    <div className="w-full shadow-sm">
+    <div className="w-full shadow-sm h-[65%] md:h-[50%]  xl:h-[45%]">
       <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-primary/45 to-secondary/50 dark:from-primary/2 dark:to-secondary/3 bg-background-secondary">
         <div className="relative h-32 sm:h-48 rounded-[10px] overflow-hidden bg-background flex items-center justify-center">
           {hasBanner ? (
@@ -30,23 +30,10 @@ export const CommunityHeader = ({ community }: CommunityHeaderProps) => {
             />
           ) : (
             <div className="text-center px-4">
-              <h1 className="text-2xl sm:text-3xl font-bold">
-                {community.name}
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground-secondary">
+                Community
               </h1>
-              <p className="text-sm text-foreground-tertiary mt-1">
-                c/{community.slug}
-              </p>
             </div>
-          )}
-
-          {/* Settings Button */}
-          {isCreator && (
-            <Link
-              href={`/home/community/${community.slug}/settings`}
-              className="absolute top-4 right-4 rounded-full bg-background/70 backdrop-blur-md p-2 shadow hover:bg-background transition z-10"
-            >
-              <Settings size={20} />
-            </Link>
           )}
         </div>
       </div>
@@ -87,15 +74,24 @@ export const CommunityHeader = ({ community }: CommunityHeaderProps) => {
 
           {/* Action */}
           <div className="flex gap-2">
-            <Button variant="btn" className="rounded-full">
+                        {isCreator && (
+            <Link
+              href={`/home/community/${community.slug}/settings`}
+              className=" rounded-full bg-background/70 backdrop-blur-md p-2 shadow hover:bg-background transition z-10"
+            >
+              <Settings size={20} />
+            </Link>
+          )}
+
+            <Button variant="btn" className="rounded-full mr-4">
               <Link href={`/home/community/${community.slug}/new`}>
                 New Post
               </Link>
             </Button>
+
           </div>
         </div>
 
-        {/* Meta */}
         <div className="mt-6 flex flex-wrap gap-6 text-sm text-foreground-tertiary">
           <div className="flex items-center gap-1">
             <Users size={18} />
