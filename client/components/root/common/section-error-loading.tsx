@@ -1,11 +1,12 @@
 import React from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
-export function FullSizeLoader({ text = "Loading, please wait..." }) {
+export function FullSizeLoader({ text = "" }) {
   return (
     <div className="w-full h-full flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4 rounded-2xl px-8 py-6 shadow-sm bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <div className="flex flex-col items-center gap-4 rounded-2xl ">
+        <Spinner />
         <p className="text-sm text-muted-foreground text-center">{text}</p>
       </div>
     </div>
