@@ -280,8 +280,8 @@ export class CommunityService {
       ),
       orderBy: [desc(schema.communityJoinRequest.createdAt)],
       with: {
-          user: true,
-      }
+        user: true,
+      },
     });
   }
 
@@ -357,7 +357,6 @@ export class CommunityService {
     return { message: 'User approved' };
   }
 
-
   // Filter Members: 'all', 'banned', 'admin'
   async getMembers(
     communityId: string,
@@ -387,8 +386,8 @@ export class CommunityService {
       limit: 50,
       orderBy: [desc(schema.communityMember.joinedAt)],
       with: {
-          user: true,
-      }
+        user: true,
+      },
     });
   }
 
