@@ -35,6 +35,8 @@ export interface Community {
   isPrivate: boolean;
   requireApproval: boolean;
   requirePostApproval: boolean; // Added from service logic
+  rules: string[] | null;
+  welcomeMessage: string | null;
   memberCount: number;
   postCount: number;
   createdAt: string;
