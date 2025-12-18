@@ -25,9 +25,13 @@ export default function Community({ slug }: CommunityProps) {
   }
 
   return (
+
     <div className="size-full overflow-y-auto flex flex-col gap-4">
       <CommunityHeader community={community} />
       <CommunityMain community={community} />
     </div>
   );
 }
+
+
+
