@@ -1,15 +1,3 @@
-import {
-  SidebarMenu,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
-
 export function CommunitySettingsVersionSwitcher() {
-
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem className="font-bold px-2 text-lg xl:text-xl">
-        Community Settings
-      </SidebarMenuItem>
-    </SidebarMenu>
-  )
+  return <p className="font-bold text-lg xl:text-xl p-4">Community Settings</p>;
 }
