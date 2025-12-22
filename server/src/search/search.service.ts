@@ -5,10 +5,12 @@ import {
   and,
   desc,
   eq,
+  ne,
   arrayContains,
   sql,
   gte,
   SQL,
+  notInArray,
 } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { schema } from '../database/schema';
@@ -23,19 +25,18 @@ import {
 export class SearchService {
   constructor(@Inject('DB') private db: NodePgDatabase<typeof schema>) {}
 
-  async search(dto: SearchQueryDto) {
+  async search(dto: SearchQueryDto, currentUserId?: string) {
     const results: {
       people?: any[];
       communities?: any[];
       posts?: any[];
     } = {};
 
-    // FIX 1: Explicitly type the promises array to avoid 'never' error
     const promises: Promise<void>[] = [];
 
     if (dto.type === SearchType.ALL || dto.type === SearchType.PEOPLE) {
       promises.push(
-        this.searchUsers(dto).then((res) => {
+        this.searchUsers(dto, currentUserId).then((res) => {
           results.people = res;
         }),
       );
@@ -62,44 +63,36 @@ export class SearchService {
   }
 
   // =========================================================
-  // 1. PEOPLE SEARCH
+  // 1. PEOPLE SEARCH (Excludes Self)
   // =========================================================
-  private async searchUsers(dto: SearchQueryDto) {
-    // FIX 2: Explicitly type the filters array as SQL[]
+  private async searchUsers(dto: SearchQueryDto, currentUserId?: string) {
     const filters: SQL[] = [];
 
-    // Always exclude banned users
     filters.push(eq(schema.user.isBanned, false));
 
-    // Text Search
+    // Modern Logic: Never show the current logged-in user in suggestions or search
+    if (currentUserId) {
+      filters.push(ne(schema.user.id, currentUserId));
+    }
+
     if (dto.q && dto.q.trim() !== '') {
       const searchPattern = `%${dto.q}%`;
       filters.push(
         or(
           ilike(schema.user.username, searchPattern),
-          // Handle nullable field safely
           ilike(schema.user.displayUsername, searchPattern),
           ilike(schema.user.name, searchPattern),
           ilike(schema.user.bio, searchPattern),
-        )!, // The ! assertion helps if TS thinks 'or' can return undefined (it shouldn't here)
+        )!,
       );
     }
 
-    // Advanced Filters
-    if (dto.verifiedOnly) {
-      filters.push(eq(schema.user.isVerified, true));
-    }
-    if (dto.isOnline) {
-      filters.push(eq(schema.user.isOnline, true));
-    }
-    if (dto.country) {
-      filters.push(ilike(schema.user.country, dto.country));
-    }
-    if (dto.minFollowers) {
+    if (dto.verifiedOnly) filters.push(eq(schema.user.isVerified, true));
+    if (dto.isOnline) filters.push(eq(schema.user.isOnline, true));
+    if (dto.country) filters.push(ilike(schema.user.country, dto.country));
+    if (dto.minFollowers)
       filters.push(gte(schema.user.followerCount, dto.minFollowers));
-    }
 
-    // Sorting
     let orderBy: SQL[] = [];
     switch (dto.sortBy) {
       case SortOption.NEWEST:
@@ -118,7 +111,6 @@ export class SearchService {
     }
 
     return this.db.query.user.findMany({
-      // FIX 3: Safe check for filters length
       where: filters.length > 0 ? and(...filters) : undefined,
       limit: dto.limit,
       offset: dto.offset,
@@ -138,15 +130,49 @@ export class SearchService {
   }
 
   // =========================================================
-  // 2. POST SEARCH
+  // 2. COMMUNITY RECOMMENDATIONS (Discovery Algorithm)
+  // =========================================================
+  async getRecommendedCommunities(currentUserId?: string, limit = 5) {
+    const filters: SQL[] = [];
+    filters.push(eq(schema.community.isPrivate, false));
+
+    // Algorithm: Don't recommend communities the user is already a member of
+    if (currentUserId) {
+      const userMemberships = this.db
+        .select({ id: schema.communityMember.communityId })
+        .from(schema.communityMember)
+        .where(eq(schema.communityMember.userId, currentUserId));
+
+      filters.push(notInArray(schema.community.id, userMemberships));
+    }
+
+    return this.db.query.community.findMany({
+      where: filters.length > 0 ? and(...filters) : undefined,
+      limit: limit,
+      // Sort by high activity (member count + post count)
+      orderBy: [
+        desc(schema.community.memberCount),
+        desc(schema.community.postCount),
+      ],
+      columns: {
+        id: true,
+        name: true,
+        slug: true,
+        avatar: true,
+        description: true,
+        memberCount: true,
+        postCount: true,
+      },
+    });
+  }
+
+  // =========================================================
+  // 3. POST SEARCH
   // =========================================================
   private async searchPosts(dto: SearchQueryDto) {
     const filters: SQL[] = [];
-
-    // Always exclude deleted posts
     filters.push(sql`${schema.post.deletedAt} IS NULL`);
 
-    // Text & Tag Search
     if (dto.q && dto.q.trim() !== '') {
       const searchPattern = `%${dto.q}%`;
       filters.push(
@@ -158,55 +184,15 @@ export class SearchService {
       );
     }
 
-    // Engagement Filters
-    if (dto.minLikes) {
-      filters.push(gte(schema.post.thumbsUpCount, dto.minLikes));
-    }
-    if (dto.minViews) {
-      filters.push(gte(schema.post.viewCount, dto.minViews));
-    }
-
-    // Content Filters
-    if (dto.hasMedia) {
-      // Drizzle SQL raw query for array length check
-      filters.push(sql`array_length(${schema.post.images}, 1) > 0`);
-    }
-
-    // Date Range
     if (dto.dateRange && dto.dateRange !== DateRange.ALL_TIME) {
-      const now = new Date();
       const dateLimit = new Date();
-
-      if (dto.dateRange === DateRange.TODAY) {
-        dateLimit.setDate(now.getDate() - 1);
-      } else if (dto.dateRange === DateRange.WEEK) {
-        dateLimit.setDate(now.getDate() - 7);
-      } else if (dto.dateRange === DateRange.MONTH) {
-        dateLimit.setMonth(now.getMonth() - 1);
-      }
-
+      if (dto.dateRange === DateRange.TODAY)
+        dateLimit.setDate(dateLimit.getDate() - 1);
+      else if (dto.dateRange === DateRange.WEEK)
+        dateLimit.setDate(dateLimit.getDate() - 7);
+      else if (dto.dateRange === DateRange.MONTH)
+        dateLimit.setMonth(dateLimit.getMonth() - 1);
       filters.push(gte(schema.post.createdAt, dateLimit));
-    }
-
-    // Sorting
-    let orderBy: SQL[] = [];
-    switch (dto.sortBy) {
-      case SortOption.NEWEST:
-        orderBy = [desc(schema.post.createdAt)];
-        break;
-      case SortOption.POPULAR:
-        orderBy = [
-          desc(schema.post.thumbsUpCount),
-          desc(schema.post.viewCount),
-        ];
-        break;
-      case SortOption.RELEVANCE:
-      default:
-        orderBy = [
-          desc(schema.post.thumbsUpCount),
-          desc(schema.post.createdAt),
-        ];
-        break;
     }
 
     return this.db.query.post.findMany({
@@ -227,17 +213,15 @@ export class SearchService {
           columns: { id: true, name: true, slug: true, avatar: true },
         },
       },
-      orderBy,
+      orderBy: [desc(schema.post.createdAt)],
     });
   }
 
   // =========================================================
-  // 3. COMMUNITY SEARCH
+  // 4. COMMUNITY SEARCH (Standard)
   // =========================================================
   private async searchCommunities(dto: SearchQueryDto) {
     const filters: SQL[] = [];
-
-    // Text Search
     if (dto.q && dto.q.trim() !== '') {
       const searchPattern = `%${dto.q}%`;
       filters.push(
@@ -245,42 +229,15 @@ export class SearchService {
           ilike(schema.community.name, searchPattern),
           ilike(schema.community.slug, searchPattern),
           ilike(schema.community.description, searchPattern),
-          arrayContains(schema.community.rules, [dto.q]),
         )!,
       );
-    }
-
-    // Filters
-    if (dto.minMembers) {
-      filters.push(gte(schema.community.memberCount, dto.minMembers));
-    }
-
-    // Sorting
-    let orderBy: SQL[] = [];
-    if (dto.sortBy === SortOption.NEWEST) {
-      orderBy = [desc(schema.community.createdAt)];
-    } else {
-      orderBy = [
-        desc(schema.community.memberCount),
-        desc(schema.community.postCount),
-      ];
     }
 
     return this.db.query.community.findMany({
       where: filters.length > 0 ? and(...filters) : undefined,
       limit: dto.limit,
       offset: dto.offset,
-      orderBy,
-      columns: {
-        id: true,
-        name: true,
-        slug: true,
-        avatar: true,
-        description: true,
-        memberCount: true,
-        postCount: true,
-        isPrivate: true,
-      },
+      orderBy: [desc(schema.community.memberCount)],
     });
   }
 }
