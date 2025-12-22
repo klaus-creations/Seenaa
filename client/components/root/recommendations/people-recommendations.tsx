@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePeopleSuggestions } from "@/lib/hooks/search/useSearch";
 import FollowButton from "../common/follow-button";
 import { useSession } from "@/lib/hooks/auth/useGetSession";
+import Link from "next/link";
 
 export default function PeopleRecommendations() {
   const { data, isLoading, isError } = usePeopleSuggestions();
@@ -16,8 +17,17 @@ export default function PeopleRecommendations() {
   }
 
   return (
-    <div className="w-full h-[45%] flex flex-col gap-4">
-      <h3 className="text-lg font-semibold">People</h3>
+    <div className="w-full h-[50%] flex flex-col gap-4 py-4">
+      <div className="w-full flex items-end justify-between">
+        <h3 className="text-lg text-foreground-secondary">People To Follow</h3>
+
+        <Link
+          href={"/home/people"}
+          className="text-sm underline text-foreground-tertiary"
+        >
+          Discover More
+        </Link>
+      </div>
 
       {isLoading && (
         <div className="text-sm text-muted-foreground">
