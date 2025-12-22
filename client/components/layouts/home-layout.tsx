@@ -17,7 +17,9 @@ export default function HomeLayout({
           {" "}
           <SideNav />{" "}
         </div>
-        <div className="w-full lg:w-[90%] p-4 xl:p-8">{children}</div>
+        <div className="size-full lg:w-[90%] px-4 xl:px-0 overflow-hidden">
+          {children}
+        </div>
       </div>
     </div>
   );

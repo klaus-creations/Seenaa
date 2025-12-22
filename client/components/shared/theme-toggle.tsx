@@ -1,60 +1,80 @@
 "use client";
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { useThemeContext } from "@/components/providers/theme-provider";
-import { Sun, Moon } from "lucide-react";
+import * as React from "react";
+import { Moon, Sun, Check } from "lucide-react";
+import { useTheme } from "@/features/slices/theme"; // Adjust path to your Zustand store
 
-export function ThemeTogglePopover() {
-  const { isDarkMode, toggleTheme } = useThemeContext();
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export function ThemeToggle() {
+  const { isDarkMode, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  // Prevent hydration mismatch by only rendering after mount
+  React.useEffect(() => {
+    setMounted(true);
+    // Apply the class to document for Tailwind's dark: selector
+    const root = window.document.documentElement;
+    if (isDarkMode) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [isDarkMode]);
+
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="icon" className="rounded-full w-9 h-9">
+        <Sun className="h-[1.2rem] w-[1.2rem] opacity-0" />
+      </Button>
+    );
+  }
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-full bg-background/[.] backdrop-blur-sm border border-border/10 hover:bg-background/60 transition-all text-foreground"
-          aria-label="Toggle Theme"
+          className="rounded-full w-9 h-9 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-secondary/50 transition-colors"
         >
           {isDarkMode ? (
-            <Moon className="size-4" />
+            <Moon className="h-[1.1rem] w-[1.1rem] transition-all" />
           ) : (
-            <Sun className="size-4" />
+            <Sun className="h-[1.1rem] w-[1.1rem] transition-all" />
           )}
+          <span className="sr-only">Toggle theme</span>
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-40 p-3 bg-background/80 backdrop-blur-md border-border/50 shadow-lg"
-        align="end"
-      >
-        <div className="flex flex-col gap-1">
-          <Button
-            variant="ghost"
-            onClick={() => !isDarkMode && toggleTheme()}
-            className={`justify-start gap-2 h-8 px-2 text-xs font-normal ${
-              !isDarkMode ? "bg-accent/50" : "hover:bg-accent/20"
-            }`}
-          >
-            <Sun className="size-3.5 text-amber-500" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[130px] rounded-xl p-1 shadow-lg border-muted/40">
+        <DropdownMenuItem
+          onClick={() => setTheme(false)}
+          className="flex items-center justify-between cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
+        >
+          <div className="flex items-center gap-2">
+            <Sun className="h-4 w-4" />
             <span>Light</span>
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => isDarkMode && toggleTheme()}
-            className={`justify-start gap-2 h-8 px-2 text-xs font-normal ${
-              isDarkMode ? "bg-accent/50" : "hover:bg-accent/20"
-            }`}
-          >
-            <Moon className="size-3.5 text-slate-400" />
+          </div>
+          {!isDarkMode && <Check className="h-4 w-4 opacity-70" />}
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => setTheme(true)}
+          className="flex items-center justify-between cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
+        >
+          <div className="flex items-center gap-2">
+            <Moon className="h-4 w-4" />
             <span>Dark</span>
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+          </div>
+          {isDarkMode && <Check className="h-4 w-4 opacity-70" />}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

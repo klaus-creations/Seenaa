@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import OtherProfilePosts from "./other-profile-posts";
 
-// import SelfProfileReposts from "./self-profile-reposts";
-
-type TabType = "posts" | "reposts" | "bookmarks";
+type TabType = "posts" | "reposts";
 
 export default function OtherProfiles({ userId }: { userId: string }) {
   const router = useRouter();
@@ -16,7 +14,6 @@ export default function OtherProfiles({ userId }: { userId: string }) {
   const [activeTab, setActiveTab] = useState<TabType>("posts");
 
   if (isLoading) {
-    // You might want a nice loading skeleton here later
     return (
       <div className="flex h-[50vh] w-full items-center justify-center text-muted-foreground">
         Loading profile...

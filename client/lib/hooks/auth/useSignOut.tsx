@@ -21,7 +21,6 @@ export const useSignOut = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      // Server responded with error
       if (error.response) {
         console.error("❌ Server error:", {
           status: error.response.status,

@@ -151,7 +151,7 @@ export function SignIn() {
             </Link>
           </div>
 
-          <Button type="submit" disabled={isPending} className="">
+          <Button variant={"btn"} type="submit" disabled={isPending} className="">
             {isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -164,11 +164,11 @@ export function SignIn() {
         </form>
       </Form>
 
-      <p className="mt-6 text-center text-sm">
+      <p className="mt-6 text-center text-sm text-foreground-tertiary">
         Don&apos;t have an account?{" "}
         <Link
           href="/auth/sign-up"
-          className={`text-[#003087] font-semibold hover:underline ${
+          className={`text-foreground-secondary font-semibold hover:underline ${
             isPending ? "pointer-events-none opacity-50" : ""
           }`}
         >

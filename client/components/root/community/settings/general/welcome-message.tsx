@@ -1,16 +1,26 @@
+"use client";
+
 import React from "react";
 import { useForm } from "react-hook-form";
+import { Info } from "lucide-react";
 import { useUpdateSettings } from "@/lib/hooks/community/useCommunity";
 import { Community } from "@/types/community";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
-  community: Community & { welcomeMessage?: string }; // Extended type assumption
+  community: Community;
 }
 
 export default function GeneralWelcomeMessageSettings({ community }: Props) {
   const { mutate: updateSettings, isPending } = useUpdateSettings();
 
-  const { register, handleSubmit, formState: { isDirty } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isDirty },
+  } = useForm({
     defaultValues: {
       welcomeMessage: community.welcomeMessage || "",
     },
@@ -25,47 +35,66 @@ export default function GeneralWelcomeMessageSettings({ community }: Props) {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-gray-900">Welcome Message</h3>
-        <p className="text-sm text-gray-500">
-          This message will be emailed to users or shown immediately after they join.
+    <div className="size-full">
+      <div className="h-[10%]">
+        <h3 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          Welcome Message
+        </h3>
+        <p className="text-sm text-foreground-secondary mt-1">
+          Greet new members automatically when they join your community.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">Pro Tip</h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p>
-                  A warm welcome message increases retention. Mention how to introduce themselves
-                  and where to find the rules.
-                </p>
-              </div>
-            </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-4">
+        <div className="space-y-1">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+            Pro Insight
+          </h4>
+          <p className="text-sm text-foreground-secondary leading-relaxed">
+            Warm greetings increase retention. Encourage new members to
+            introduce themselves or point them toward your community rules.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-foreground-secondary">
+            The Welcome Message
+          </label>
+          <Textarea
+            {...register("welcomeMessage")}
+            rows={8}
+            className="w-full bg-transparent border-none text-base font-medium focus:ring-0 placeholder:text-foreground-tertiary/40 resize-none leading-relaxed min-h-[120px] max-h-[300px] p-2"
+            placeholder="Hi there! We are thrilled to have you here. To get started, please check out..."
+          />
+          <div className="h-px w-full bg-foreground/10" />
+
+          <div className="flex items-center gap-2 pt-2 text-foreground-tertiary">
+            <Info size={14} />
+            <p className="text-[11px] font-medium tracking-tight">
+              Sent via notification or email immediately upon joining.
+            </p>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Message Content</label>
-          <textarea
-            {...register("welcomeMessage")}
-            rows={6}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-3"
-            placeholder="Welcome to the community! We are glad to have you..."
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <button
+        <div className="flex items-center gap-4 pt-4">
+          <Button
+            variant={"btn"}
             type="submit"
             disabled={!isDirty || isPending}
-            className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+            className=""
           >
-            {isPending ? "Saving..." : "Save Message"}
-          </button>
+            {isPending ? "Updating..." : "Save Message"}
+          </Button>
+
+          {isDirty && !isPending && (
+            <button
+              type="button"
+              onClick={() => reset()}
+              className="text-xs font-bold text-foreground-tertiary hover:text-foreground transition-colors uppercase tracking-widest"
+            >
+              Discard Changes
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -7,7 +7,7 @@ export default function LandingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="size-full bg-[#F9F9F9] lex flex-col text-foreground overflow-y-auto">
+    <div className="size-full  flex flex-col text-foreground overflow-y-auto">
       <LandingHeader />
       {children}
     </div>

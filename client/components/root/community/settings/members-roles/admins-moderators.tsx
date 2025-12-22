@@ -1,16 +1,11 @@
 "use client";
 
-import {
-  Shield,
-  ShieldAlert,
-  ArrowDown,
-  ShieldCheck,
-} from "lucide-react";
+import { Shield, ShieldAlert, ArrowDown, ShieldCheck } from "lucide-react";
 
 // Hooks & Types
 import {
   useGetCommunityMembers,
-  useUpdateMemberRole
+  useUpdateMemberRole,
 } from "@/lib/hooks/community/useCommunity";
 import { Community } from "@/types/community";
 
@@ -24,12 +19,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { FullSizeLoader } from "@/components/root/common/section-error-loading";
 
 interface Props {
   community: Community;
 }
 
-// Helper to format permission keys into readable text
 const formatPermission = (key: string) => {
   return key
     .replace(/can/g, "")
@@ -37,12 +32,21 @@ const formatPermission = (key: string) => {
     .trim();
 };
 
-export default function MembersRolesAdminsModeratorsSettings({ community }: Props) {
-  const { data: admins, isLoading } = useGetCommunityMembers(community.id, "admin");
+export default function MembersRolesAdminsModeratorsSettings({
+  community,
+}: Props) {
+  const { data: admins, isLoading } = useGetCommunityMembers(
+    community.id,
+    "admin"
+  );
   const { mutate: updateRole, isPending: isUpdating } = useUpdateMemberRole();
 
   const handleDemote = (userId: string, userName: string) => {
-    if (window.confirm(`Are you sure you want to demote ${userName}? They will lose all administrative privileges.`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to demote ${userName}? They will lose all administrative privileges.`
+      )
+    ) {
       updateRole({
         communityId: community.id,
         userId,
@@ -53,166 +57,145 @@ export default function MembersRolesAdminsModeratorsSettings({ community }: Prop
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4 text-gray-500">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p>Loading leadership team...</p>
+      <div className="size-full">
+        <FullSizeLoader />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Stats */}
-      <div className="flex justify-between items-end border-b border-gray-100 pb-4">
+    <div className="size-full">
+      {/* Header Info */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6">
         <div>
-          <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-blue-600" />
+          <h3 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             Admins & Moderators
           </h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage the leadership team and their specific permissions.
+          <p className="text-sm text-foreground-secondary mt-1">
+            Users with elevated privileges to manage the community.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-           <Badge variant="secondary" className="px-3 py-1 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100">
-             Admins: {admins?.length || 0}
-           </Badge>
-        </div>
+        <p className="text-secondary text-sm font-semibold ">
+          {admins?.length == 1
+            ? `${admins?.length} Admin`
+            : `${admins?.length} Admins`}
+        </p>
       </div>
 
-      {/* Modern Table List */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
-        <table className="min-w-full divide-y divide-gray-100">
-          <thead className="bg-gray-50/50">
-            <tr>
-              <th className="py-4 pl-6 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                User
-              </th>
-              <th className="px-3 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Role
-              </th>
-              <th className="px-3 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Active Permissions
-              </th>
-              <th className="relative py-4 pl-3 pr-6 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
-            {admins?.map((admin) => {
-              const user = admin.user;
-              if (!user) return null;
+      {/* List Container */}
+      <div className="grid gap-4">
+        {admins?.map((admin) => {
+          const user = admin.user;
+          if (!user) return null;
 
-              // Parse permissions
-              const activePermissions = Object.keys(admin.permissions || {}).filter(
-                (k) => (admin.permissions as any)[k]
-              );
-              const hasAllPermissions = activePermissions.length === 0; // Assuming empty logic or handle explicitly
+          const activePermissions = Object.keys(admin.permissions || {}).filter(
+            (k) => (admin.permissions as any)[k]
+          );
 
-              return (
-                <tr
-                  key={admin.id}
-                  className="group transition-colors hover:bg-blue-50/10"
-                >
-                  {/* USER INFO */}
-                  <td className="py-4 pl-6 pr-3">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <Avatar className="h-10 w-10 border border-gray-200">
-                          <AvatarImage src={user.image || ""} alt={user.name} />
-                          <AvatarFallback className="bg-blue-50 text-blue-600 font-bold">
-                            {user.name?.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {user.isOnline && (
-                          <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white" />
-                        )}
-                      </div>
+          return (
+            <div
+              key={admin.id}
+              className="group relative flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-md hover:border-primary/20"
+            >
+              {/* User Identity Section */}
+              <div className="flex items-center gap-4 flex-1">
+                <div className="relative shrink-0">
+                  <Avatar className="size-8 lg:size-10 border border-background">
+                    <AvatarImage
+                      src={user.image || "/images/profile-placeholder.svg"}
+                      alt={user.name}
+                    />
+                    <AvatarFallback className="bg-primary/5 text-primary font-bold">
+                      {user.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {user.isOnline && (
+                    <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
+                  )}
+                </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-gray-900 truncate">
-                          {user.name}
-                        </div>
-                        <div className="text-xs text-gray-500 truncate">
-                          @{user.username}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* ROLE */}
-                  <td className="px-3 py-4">
-                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200 shadow-none">
-                      Admin
-                    </Badge>
-                  </td>
-
-                  {/* PERMISSIONS */}
-                  <td className="px-3 py-4">
-                    <div className="flex flex-wrap gap-1.5 max-w-xs">
-                      {activePermissions.length > 0 ? (
-                        activePermissions.map((perm) => (
-                          <span
-                            key={perm}
-                            className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200"
-                          >
-                            {formatPermission(perm)}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                          <Shield className="w-3 h-3 mr-1" />
-                          Full Access
-                        </span>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* ACTIONS */}
-                  <td className="py-4 pl-3 pr-6 text-right">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={isUpdating}
-                            onClick={() => handleDemote(admin.userId, user.name)}
-                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                          >
-                            <ArrowDown className="w-4 h-4 mr-2" />
-                            Demote
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent className="bg-orange-600 text-white border-orange-700">
-                          <p>Revoke admin privileges</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </td>
-                </tr>
-              );
-            })}
-
-            {admins?.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-16 text-center">
-                  <div className="flex flex-col items-center justify-center text-gray-500">
-                    <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                      <ShieldAlert className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <h4 className="text-lg font-medium text-gray-900">No Admins Defined</h4>
-                    <p className="text-sm text-gray-400 mt-1 max-w-xs">
-                      This community relies solely on the Creator for management.
-                      Promote members to help you out!
-                    </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-foreground truncate max-w-[150px] sm:max-w-none">
+                      {user.name}
+                    </span>
+                    <p className="text-secondary">Admin</p>
                   </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  <div className="text-xs text-foreground-tertiary">
+                    {user.username}
+                  </div>
+                </div>
+              </div>
+
+              {/* Permissions Section */}
+              {/* <div className="flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-foreground-tertiary mb-2">
+                  Active Capabilities
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {activePermissions.length > 0 ? (
+                    activePermissions.map((perm) => (
+                      <span
+                        key={perm}
+                        className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-foreground border"
+                      >
+                        {formatPermission(perm)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
+                      Full Root Access
+                    </span>
+                  )}
+                </div>
+              </div> */}
+
+              {/* Action Section */}
+              <div className="flex items-center justify-end gap-2 pt-4 md:pt-0 border-t md:border-none">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isUpdating}
+                        onClick={() => handleDemote(admin.userId, user.name)}
+                        className="h-9 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <ArrowDown className="w-4 h-4 mr-2" />
+                        <span className="text-xs font-bold uppercase tracking-tight">
+                          Demote
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-destructive text-destructive-foreground font-bold">
+                      <p>Revoke all privileges</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Empty State */}
+        {admins?.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center rounded-3xl border border-dashed bg-accent/20">
+            <div className="h-16 w-16 bg-background rounded-2xl shadow-sm flex items-center justify-center mb-4 ring-8 ring-accent/10">
+              <ShieldAlert className="h-8 w-8 text-foreground-tertiary" />
+            </div>
+            <h4 className="text-lg font-bold text-foreground">
+              Single Handed Management
+            </h4>
+            <p className="text-sm text-foreground-tertiary mt-2 max-w-sm">
+              Currently, there are no other admins. Promoting trusted members
+              helps keep the community safe and active.
+            </p>
+            <Button variant="outline" className="mt-6 rounded-full font-bold">
+              Learn about roles
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

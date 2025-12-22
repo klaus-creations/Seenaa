@@ -210,7 +210,7 @@ const SignUp = function () {
           {/* Submit Button */}
           <Button
             type="submit"
-            variant={"default"}
+            variant={"btn"}
             disabled={isPending}
             className=""
           >
@@ -226,11 +226,11 @@ const SignUp = function () {
         </form>
       </Form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-foreground-tertiary">
         Already have an account?{" "}
         <Link
           href="/auth/sign-in"
-          className={` font-semibold hover:underline ${
+          className={` font-semibold hover:underline text-foreground-secondary ${
             isPending ? "pointer-events-none opacity-50" : ""
           }`}
         >

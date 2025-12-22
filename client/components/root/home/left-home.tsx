@@ -24,7 +24,6 @@ export default function LeftHome({ query }: IQuery) {
     page: 1,
     limit: 10,
     feedType: feedType,
-    // You might want to pass 'query' here if searching is implemented
   };
 
   const {
@@ -38,7 +37,7 @@ export default function LeftHome({ query }: IQuery) {
 
   if (isError) {
     return (
-      <div className="h-full w-full lg:w-[65%] 2xl:w-[70%] overflow-y-auto flex flex-col items-start border">
+      <div className="size-full lg:w-[65%] 2xl:w-[70%] overflow-y-auto flex flex-col items-start border">
         <FilterFeed selectedType={feedType} onSelectType={setFeedType} />
 
         <div className="w-full flex-1 flex flex-col items-center justify-center gap-4 py-10">

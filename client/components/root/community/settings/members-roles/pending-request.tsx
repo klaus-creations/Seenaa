@@ -8,13 +8,14 @@ import {
   Clock,
   MessageSquareQuote,
   UserPlus,
-  AlertTriangle
+  AlertTriangle,
+  MapPin,
 } from "lucide-react";
 
 // Hooks & Types
 import {
   useGetCommunityRequests,
-  useReviewJoinRequest
+  useReviewJoinRequest,
 } from "@/lib/hooks/community/useCommunity";
 import { Community } from "@/types/community";
 
@@ -29,14 +30,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { FullSizeLoader } from "@/components/root/common/section-error-loading";
 
 interface Props {
   community: Community;
 }
 
-export default function MembersRolesPendingRequestSettings({ community }: Props) {
+export default function MembersRolesPendingRequestSettings({
+  community,
+}: Props) {
   const { data: requests, isLoading } = useGetCommunityRequests(community.id);
-  const { mutate: reviewRequest, isPending: isReviewing } = useReviewJoinRequest();
+  const { mutate: reviewRequest, isPending: isReviewing } =
+    useReviewJoinRequest();
 
   const handleReview = (requestId: string, status: "approved" | "rejected") => {
     reviewRequest({
@@ -48,148 +53,160 @@ export default function MembersRolesPendingRequestSettings({ community }: Props)
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4 text-gray-500">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-        <p>Loading pending requests...</p>
+      <div className="size-full">
+        <FullSizeLoader />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Stats & Warning */}
-      <div className="flex flex-col gap-4 border-b border-gray-100 pb-4">
-        <div className="flex justify-between items-end">
+    <div className="size-full">
+      <div className="flex flex-col gap-6 mb-8 min-h-[10%]">
+        <div className="flex items-center justify-between border-b pb-6">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-indigo-600" />
-              Pending Requests
+            <h3 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              Join Requests
             </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Review users waiting to join your community.
+            <p className="text-sm text-foreground-secondary mt-1">
+              Review users who want to participate in this community.
             </p>
           </div>
-          <Badge variant="secondary" className="px-3 py-1 text-sm">
-            Pending: {requests?.length || 0}
+          <Badge
+            variant="default"
+            className="h-7 px-3 text-sm font-bold rounded-full"
+          >
+            {requests?.length || 0} Pending
           </Badge>
         </div>
 
         {!community.requireApproval && (
-          <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-800">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertTitle>Approval Disabled</AlertTitle>
-            <AlertDescription className="text-amber-700/90 text-xs">
-              "Require Join Approval" is currently turned off in settings. New users will join automatically without appearing here.
+          <Alert className="border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-500 rounded-2xl">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle className="font-bold uppercase text-[10px] tracking-widest">
+              Notice
+            </AlertTitle>
+            <AlertDescription className="text-xs opacity-90">
+              Join Approval is currently disabled. New members join
+              automatically.
             </AlertDescription>
           </Alert>
         )}
       </div>
 
-      {/* Requests List */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-xs overflow-hidden">
-        <ul role="list" className="divide-y divide-gray-100">
-          {requests?.map((request) => {
-             const user = request.user;
-             if (!user) return null;
+      {/* Transparent List Layout */}
+      <div className="flex flex-col">
+        {requests?.map((request) => {
+          const user = request.user;
+          if (!user) return null;
 
-             return (
-              <li key={request.id} className="group p-4 sm:p-6 hover:bg-gray-50/50 transition-colors">
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          return (
+            <div
+              key={request.id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between py-6 border-b last:border-0 hover:bg-accent/5 px-2 transition-colors -mx-2 rounded-xl"
+            >
+              <div className="flex items-start gap-4 flex-1 min-w-0">
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                  <Avatar className="h-12 w-12 border border-background">
+                    <AvatarImage src={user.image || ""} alt={user.name} />
+                    <AvatarFallback className="bg-primary/5 text-primary font-bold">
+                      {user.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
 
-                  {/* User Profile Area */}
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <Avatar className="h-12 w-12 border border-gray-200">
-                      <AvatarImage src={user.image || ""} alt={user.name} />
-                      <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold text-lg">
-                        {user.name?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                {/* Content info */}
+                <div className="flex flex-col min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-foreground truncate">
+                      {user.name}
+                    </span>
+                    <span className="text-xs text-foreground-tertiary">
+                      @{user.username}
+                    </span>
+                  </div>
 
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
-                          {user.name}
-                        </p>
-                        <span className="text-xs text-gray-400 font-normal">
-                          @{user.username}
-                        </span>
-                      </div>
+                  {/* Message Box - Minimalist social style */}
+                  <div className="mt-2 text-sm text-foreground-secondary leading-relaxed border-l-2 border-primary/20 pl-3">
+                    {request.message ? (
+                      <span className="italic">"{request.message}"</span>
+                    ) : (
+                      <span className="text-foreground-tertiary text-xs">
+                        No join message attached.
+                      </span>
+                    )}
+                  </div>
 
-                      {/* Request Message */}
-                      <div className="relative pl-3 border-l-2 border-indigo-100 bg-gray-50/50 rounded-r-md p-2">
-                        <p className="text-sm text-gray-600 italic leading-relaxed">
-                          {request.message ? (
-                            `"${request.message}"`
-                          ) : (
-                            <span className="text-gray-400 not-italic">No message provided.</span>
-                          )}
-                        </p>
-                      </div>
-
-                      {/* Meta Data */}
-                      <div className="flex items-center gap-3 text-xs text-gray-400 pt-1">
-                        <span className="flex items-center">
-                          <Clock className="w-3 h-3 mr-1" />
-                          Requested {format(new Date(request.createdAt), "MMM d, p")}
-                        </span>
-                        {user.country && <span>• From {user.country}</span>}
-                      </div>
+                  {/* Metadata row */}
+                  <div className="flex items-center gap-4 mt-3 text-[11px] text-foreground-tertiary">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Clock className="w-3 h-3" />
+                      {format(new Date(request.createdAt), "MMM d, h:mm a")}
                     </div>
-                  </div>
-
-                  {/* Actions Area */}
-                  <div className="flex items-center gap-3 pt-2 sm:pt-0 pl-16 sm:pl-0">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => handleReview(request.id, "rejected")}
-                            disabled={isReviewing}
-                            variant="outline"
-                            size="icon"
-                            className="h-9 w-9 text-red-600 border-gray-200 hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-all rounded-full"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Reject Request</TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => handleReview(request.id, "approved")}
-                            disabled={isReviewing}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white border-none shadow-sm rounded-full px-4 gap-2"
-                          >
-                            <Check className="h-4 w-4" />
-                            <span className="font-medium">Approve</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Approve Membership</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    {user.country && (
+                      <div className="flex items-center gap-1 font-medium">
+                        <MapPin className="w-3 h-3" />
+                        {user.country}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </li>
-            );
-          })}
-
-          {requests?.length === 0 && (
-            <li className="py-16 text-center">
-              <div className="flex flex-col items-center justify-center text-gray-500">
-                <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                  <MessageSquareQuote className="h-6 w-6 text-gray-400" />
-                </div>
-                <h4 className="text-lg font-medium text-gray-900">Inbox Zero</h4>
-                <p className="text-sm text-gray-400 mt-1 max-w-xs">
-                  There are no pending join requests at the moment.
-                </p>
               </div>
-            </li>
-          )}
-        </ul>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 mt-4 sm:mt-0 sm:ml-4 self-end sm:self-center">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => handleReview(request.id, "rejected")}
+                        disabled={isReviewing}
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-bold">
+                      Decline
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => handleReview(request.id, "approved")}
+                        disabled={isReviewing}
+                        className="h-10 px-6 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs uppercase tracking-wider"
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Approve
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-bold">
+                      Accept Member
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Empty State */}
+        {requests?.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="h-20 w-20 rounded-full bg-accent/30 flex items-center justify-center mb-4">
+              <MessageSquareQuote className="h-10 w-10 text-foreground-tertiary opacity-40" />
+            </div>
+            <p className="text-lg font-bold text-foreground">All Caught Up</p>
+            <p className="text-sm text-foreground-tertiary max-w-xs mt-1">
+              There are no pending join requests. You'll see new applications
+              here as they arrive.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

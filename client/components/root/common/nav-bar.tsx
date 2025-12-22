@@ -29,7 +29,7 @@ export default function SideNav() {
   }
 
   return (
-    <aside className="size-full border-r flex flex-col justify-between py-6 px-3">
+    <aside className="size-full border-r flex flex-col justify-between py-2 px-3">
       {/* TOP NAV */}
       <nav className="flex flex-col gap-6 items-start">
         {NAV_TOP.map((item) => {
@@ -40,13 +40,13 @@ export default function SideNav() {
             <Link
               key={item.title}
               href={item.href}
-              className={`flex items-center gap-3 transition tracking-[1px] ${
+              className={`flex items-center gap-2 transition tracking-[1px] ${
                 isActive
                   ? "text-foreground font-bold"
                   : "text-foreground-tertiary medium"
               }`}
             >
-              {/* <Icon className="size-5" /> */}
+              <Icon className="size-5" />
               <span>{item.title}</span>
             </Link>
           );

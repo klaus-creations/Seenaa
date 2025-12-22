@@ -1,4 +1,3 @@
-// src/features/hooks/useFollow.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 
@@ -25,13 +24,8 @@ interface ApiErrorResponse {
   statusCode?: number;
 }
 
-// ==========================================
-// QUERIES
-// ==========================================
 
-/**
- * Fetch followers of a specific user
- */
+// Fetch followers of a specific user
 export const useGetFollowers = (userId: string, query: GetFollowsQueryDto) => {
   return useQuery<PaginatedFollows, AxiosError<ApiErrorResponse>>({
     queryKey: ["users", "followers", userId, query],
@@ -41,22 +35,16 @@ export const useGetFollowers = (userId: string, query: GetFollowsQueryDto) => {
   });
 };
 
-/**
- * Fetch who a specific user is following
- */
+// Fetch who a specific user is following
 export const useGetFollowing = (userId: string, query: GetFollowsQueryDto) => {
   return useQuery<PaginatedFollows, AxiosError<ApiErrorResponse>>({
-    queryKey: ["users", "following", userId, query],
-    queryFn: () => getFollowingRequest(userId, query),
+    queryKey: ["users", "following", userId, query], queryFn: () => getFollowingRequest(userId, query),
     enabled: !!userId,
     placeholderData: (previousData) => previousData,
   });
 };
 
-/**
- * Check if I am following a specific user
- * Useful for initializing the "Follow" button state on a profile page
- */
+// CHECK IF THE CURRENT USER IS FOLLOWING SOMEONE
 export const useGetFollowStatus = (targetUserId: string) => {
   return useQuery<FollowStatusResponse, AxiosError<ApiErrorResponse>>({
     queryKey: ["users", "status", targetUserId],
@@ -65,13 +53,7 @@ export const useGetFollowStatus = (targetUserId: string) => {
   });
 };
 
-// ==========================================
-// MUTATIONS
-// ==========================================
-
-/**
- * Follow a user
- */
+// FOLLOW USER
 export const useFollowUser = () => {
   const queryClient = useQueryClient();
 
@@ -104,9 +86,7 @@ export const useFollowUser = () => {
   });
 };
 
-/**
- * Unfollow a user
- */
+// Unfollow a user
 export const useUnfollowUser = () => {
   const queryClient = useQueryClient();
 

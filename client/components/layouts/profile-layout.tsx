@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import SelfProfileView from "../root/profile/self-profile-header";
+import Recommendations from "../root/recommendations/recommendations";
 
 export default function ProfileLayout({
   children,
@@ -12,10 +13,16 @@ export default function ProfileLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="size-full">
+    <div className="size-full  overflow-hidden lg:p-4 flex justify-around">
+    <div className="size-full overflow-y-auto  h lg:w-[65%] 2xl:w-[40%]">
       <SelfProfileView />
       <ProfileSettingsSelect />
       <div className="w-full py-2">{children}</div>
+      </div>
+
+     <div className="w-[40%] 2xl:w-[30%] hidden lg:block h-full">
+        <Recommendations />
+      </div>
     </div>
   );
 }
@@ -29,7 +36,7 @@ const ProfileSettingsSelect = function () {
   ];
 
   return (
-    <div className="w-full flex items-center border-b gap-2">
+    <div className="w-full px-4 flex items-center  gap-2">
       {tabs.map((tab) => {
         const isActive = pathname === tab.href;
 
@@ -38,7 +45,7 @@ const ProfileSettingsSelect = function () {
             key={tab.name}
             href={tab.href}
             className={cn(
-              "h-12 flex items-center justify-center cursor-pointer"
+              "h-6 lg:h-8 flex items-center justify-center cursor-pointer"
             )}
           >
             <div className="relative h-full flex items-center px-1">
@@ -46,15 +53,15 @@ const ProfileSettingsSelect = function () {
                 className={cn(
                   "text-[15px] transition-all",
                   isActive
-                    ? "font-bold text-gray-900 dark:text-white"
-                    : "font-medium text-gray-500 dark:text-gray-400"
+                    ? "font-bold text-foreground"
+                    : "font-medium text-foreground-secondary"
                 )}
               >
                 {tab.name}
               </span>
 
               {isActive && (
-                <div className="absolute bottom-0 left-0 w-full h-1 bg-blue-500 rounded-full" />
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full" />
               )}
             </div>
           </Link>

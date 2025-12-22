@@ -1,16 +1,9 @@
-// src/types/follow.ts
+import {  User } from "@/types/user";
 
-export interface FollowUserResponseDto {
-  id: string;
-  name: string;
-  image: string | null;
-  username?: string;
-  bio?: string;
-  isFollowing: boolean;
-}
+
 
 export interface PaginatedFollows {
-  data: FollowUserResponseDto[];
+  data: User[];
   pagination: {
     page: number;
     limit: number;
@@ -22,9 +15,9 @@ export interface GetFollowsQueryDto {
   limit?: number;
   page?: number;
 }
-
 export interface FollowStatusResponse {
   isFollowing: boolean;
+  isSelf: boolean;
 }
 
 export interface FollowActionResult {

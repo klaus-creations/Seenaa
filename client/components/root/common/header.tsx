@@ -25,7 +25,7 @@ export default function Header() {
 
   return (
     <header
-      className="w-full h-16 flex items-center justify-between border-b border-gray-200 dark:border-gray-800 px-4
+      className="size-full flex items-center justify-between border-b border-gray-200 dark:border-gray-800 px-4
      py-3 sticky top-0 z-50 bg-primary/1 backdrop-blur"
     >
       {/* --- Left Side: Logo --- */}
@@ -90,6 +90,7 @@ function UserProfile({
 }) {
   const user = session?.user || session;
 
+
   return (
     <div className="flex items-center gap-3 pl-2 border-l border-gray-200 dark:border-gray-800">
       <div className="hidden md:flex flex-col items-end">
@@ -97,7 +98,7 @@ function UserProfile({
           {user?.name || "User"}
         </span>
         <span className="text-xs text-gray-500 dark:text-gray-400">
-          {user?.username || "@username"}
+          {user?.displayUsername || "@username"}
         </span>
       </div>
 

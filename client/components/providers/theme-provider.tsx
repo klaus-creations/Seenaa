@@ -34,7 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
       <div
         className={`w-full h-screen overflow-hidden ${
-          isDarkMode ? "some" : "light"
+          isDarkMode ? "dark" : "light"
         }`}
       >
         {children}

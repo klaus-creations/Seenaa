@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 
 import SelfProfilePosts from "./self-profile-posts";
 import SelfProfileBookmarks from "./self-profile-bookmarks";
-// import SelfProfileReposts from "./self-profile-reposts";
 
 type TabType = "posts" | "reposts" | "bookmarks";
 
@@ -32,13 +31,12 @@ export default function SelfProfile() {
 
   const tabs: { id: TabType; label: string }[] = [
     { id: "posts", label: "Posts" },
-    // { id: "reposts", label: "Reposts" },
     { id: "bookmarks", label: "Bookmarks" },
   ];
 
   return (
-    <div className="w-full min-h-screen pb-20">
-      <div className="sticky top-0 z-10 border-b border-border">
+    <div className="size-full">
+      <div className="z-10 border-b border-border ">
         <nav className="flex gap-3 w-full ">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -64,7 +62,6 @@ export default function SelfProfile() {
         </nav>
       </div>
 
-      {/* CONTENT AREA */}
       <div className="w-full">
         {activeTab === "posts" && (
           <div className="animate-in fade-in duration-300">

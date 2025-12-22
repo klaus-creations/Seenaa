@@ -73,7 +73,7 @@ export default function FollowButton({
         className={cn(
           "bg-background hover:bg-background/90",
           "border-none",
-          "text-primary",
+          "text-foreground",
           "transition-all"
         )}
       >
