@@ -29,10 +29,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AppProviders>
-          <div className="size-full bg-[#F5F9F9]">{children}</div>
+          <div className="size-full bg-background">{children}</div>
           <SocketStatus />
           <Toaster />
         </AppProviders>

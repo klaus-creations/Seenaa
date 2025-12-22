@@ -36,16 +36,15 @@ export default function OAuth() {
 
   return (
     <div className="space-y-4">
-      {/* Server Error Box */}
       {serverError && (
-        <div className="p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-x-2 border border-destructive/20">
+        <div className="p-3 rounded-md bg-destructive/15  text-sm flex items-center gap-x-2 border border-destructive/20">
           <AlertCircle className="h-4 w-4" />
           <p>{serverError}</p>
         </div>
       )}
 
       <Button
-        className="text-black flex items-center gap-3 w-full h-11 rounded-lg"
+        className="text-foreground-secondary items-center gap-3 w-full h-11 rounded-lg"
         variant={"outline"}
         onClick={handleOAuth}
         disabled={isPending}
