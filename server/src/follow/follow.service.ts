@@ -12,33 +12,34 @@ import { v4 as uuidv4 } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { GetFollowsQueryDto } from './dto/get-follows.dto';
-import { FollowUserResponseDto } from './dto/follow-response.dto';
 
+// Use the full User type from your schema
 type User = InferSelectModel<typeof schema.user>;
+
+// Extend the User type to include UI-specific flags
+export type EnhancedUser = User & {
+  isFollowing: boolean;
+  isSelf: boolean;
+};
 
 @Injectable()
 export class FollowService {
   constructor(
     @Inject('DB') private db: NodePgDatabase<typeof schema>,
-    private eventEmitter: EventEmitter2, // 👈 INJECT THIS
+    private eventEmitter: EventEmitter2,
   ) {}
 
-  /**
-   * Follow a user
-   */
   async follow(followerId: string, followingId: string) {
     if (followerId === followingId) {
       throw new BadRequestException('You cannot follow yourself');
     }
 
-    // 1. Check if user exists
     const targetUser = await this.db.query.user.findFirst({
       where: eq(schema.user.id, followingId),
     });
 
-    if (!targetUser) throw new NotFoundException('User to follow not found');
+    if (!targetUser) throw new NotFoundException('User not found');
 
-    // 2. Check if already following
     const existingFollow = await this.db.query.follow.findFirst({
       where: and(
         eq(schema.follow.followerId, followerId),
@@ -47,7 +48,7 @@ export class FollowService {
     });
 
     if (existingFollow) {
-      throw new ConflictException('You are already following this user');
+      throw new ConflictException('Already following');
     }
 
     await this.db.transaction(async (tx) => {
@@ -60,42 +61,27 @@ export class FollowService {
 
       await tx
         .update(schema.user)
-        .set({
-          followingCount: sql`${schema.user.followingCount} + 1`,
-        })
+        .set({ followingCount: sql`${schema.user.followingCount} + 1` })
         .where(eq(schema.user.id, followerId));
 
       await tx
         .update(schema.user)
-        .set({
-          followerCount: sql`${schema.user.followerCount} + 1`,
-        })
+        .set({ followerCount: sql`${schema.user.followerCount} + 1` })
         .where(eq(schema.user.id, followingId));
-    });
-
-    // 🔥 NOTIFICATION LOGIC
-    console.log('🔥 Emitting follow notification:', {
-      recipientId: followingId,
-      actorId: followerId,
-      type: 'new_follower',
     });
 
     this.eventEmitter.emit('notification.create', {
       recipientId: followingId,
       actorId: followerId,
       type: 'new_follower',
-
       targetId: followerId,
       targetType: 'user',
-
       content: 'started following you',
       actionUrl: `/home/peoples/${followerId}`,
     });
 
     return { message: 'Followed successfully', isFollowing: true };
   }
-
-  //  Unfollow a user
 
   async unfollow(followerId: string, followingId: string) {
     const existingFollow = await this.db.query.follow.findFirst({
@@ -106,7 +92,7 @@ export class FollowService {
     });
 
     if (!existingFollow) {
-      throw new NotFoundException('You are not following this user');
+      throw new NotFoundException('Not following this user');
     }
 
     await this.db.transaction(async (tx) => {
@@ -121,16 +107,12 @@ export class FollowService {
 
       await tx
         .update(schema.user)
-        .set({
-          followingCount: sql`${schema.user.followingCount} - 1`,
-        })
+        .set({ followingCount: sql`${schema.user.followingCount} - 1` })
         .where(eq(schema.user.id, followerId));
 
       await tx
         .update(schema.user)
-        .set({
-          followerCount: sql`${schema.user.followerCount} - 1`,
-        })
+        .set({ followerCount: sql`${schema.user.followerCount} - 1` })
         .where(eq(schema.user.id, followingId));
     });
 
@@ -153,13 +135,13 @@ export class FollowService {
       with: { follower: true },
     });
 
-    if (!followersData.length) {
-      return { data: [], pagination: { page, limit, hasMore: false } };
-    }
+    // not showing the current user from
+    const rawUsers = followersData
+      .map((f) => f.follower)
+      .filter((u) => u.id !== currentViewerId);
 
-    const users = followersData.map((f) => f.follower);
     const formattedUsers = await this.enrichWithFollowStatus(
-      users,
+      rawUsers,
       currentViewerId,
     );
 
@@ -168,7 +150,7 @@ export class FollowService {
       pagination: {
         page,
         limit,
-        hasMore: users.length === limit,
+        hasMore: followersData.length === limit,
       },
     };
   }
@@ -189,13 +171,13 @@ export class FollowService {
       with: { following: true },
     });
 
-    if (!followingData.length) {
-      return { data: [], pagination: { page, limit, hasMore: false } };
-    }
+    // Extract user objects and filter out the "Self" (current viewer)
+    const rawUsers = followingData
+      .map((f) => f.following)
+      .filter((u) => u.id !== currentViewerId); // Filter out self
 
-    const users = followingData.map((f) => f.following);
     const formattedUsers = await this.enrichWithFollowStatus(
-      users,
+      rawUsers,
       currentViewerId,
     );
 
@@ -204,37 +186,33 @@ export class FollowService {
       pagination: {
         page,
         limit,
-        hasMore: users.length === limit,
+        hasMore: followingData.length === limit,
       },
     };
   }
 
-  async getFollowStatus(followerId: string, targetUserId: string) {
-    const follow = await this.db.query.follow.findFirst({
-      where: and(
-        eq(schema.follow.followerId, followerId),
-        eq(schema.follow.followingId, targetUserId),
-      ),
-    });
-
-    return { isFollowing: !!follow };
-  }
-
+  /**
+   * Takes a list of users and adds 'isFollowing' and 'isSelf' flags
+   * while maintaining all original user fields.
+   */
   private async enrichWithFollowStatus(
     users: User[],
     currentViewerId: string | null,
-  ): Promise<FollowUserResponseDto[]> {
-    if (!currentViewerId || users.length === 0) {
+  ): Promise<EnhancedUser[]> {
+    if (users.length === 0) return [];
+
+    // If no one is logged in, all follow statuses are false
+    if (!currentViewerId) {
       return users.map((u) => ({
-        id: u.id,
-        name: u.name,
-        image: u.image,
+        ...u,
         isFollowing: false,
+        isSelf: false,
       }));
     }
 
     const userIds = users.map((u) => u.id);
 
+    // Fetch all follow relationships between the viewer and this list of users in one query
     const relationships = await this.db.query.follow.findMany({
       where: and(
         eq(schema.follow.followerId, currentViewerId),
@@ -246,10 +224,23 @@ export class FollowService {
     const followedSet = new Set(relationships.map((r) => r.followingId));
 
     return users.map((u) => ({
-      id: u.id,
-      name: u.name,
-      image: u.image,
+      ...u, // Spreading the full user object (bio, counts, theme, etc.)
       isFollowing: followedSet.has(u.id),
+      isSelf: u.id === currentViewerId,
     }));
+  }
+
+  async getFollowStatus(followerId: string, targetUserId: string) {
+    const follow = await this.db.query.follow.findFirst({
+      where: and(
+        eq(schema.follow.followerId, followerId),
+        eq(schema.follow.followingId, targetUserId),
+      ),
+    });
+
+    return {
+      isFollowing: !!follow,
+      isSelf: followerId === targetUserId,
+    };
   }
 }
